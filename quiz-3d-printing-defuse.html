@@ -1,0 +1,602 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>3D Printing Bomb Defuse Quiz</title>
+  <style>
+    :root {
+      --bg: #0f1226;
+      --panel: #1a1f3a;
+      --text: #f3f4ff;
+      --muted: #b8bdd9;
+      --accent: #5dd3ff;
+      --danger: #ff5d73;
+      --danger-glow: #ff2747;
+      --success: #57e389;
+      --warning: #ffbf47;
+      --wire: #6ce0ff;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      font-family: "Segoe UI", Roboto, Arial, sans-serif;
+      background: radial-gradient(circle at 20% 20%, #212654 0%, var(--bg) 45%, #090b19 100%);
+      color: var(--text);
+      display: grid;
+      place-items: center;
+      padding: 1rem;
+    }
+
+    .app {
+      width: min(920px, 100%);
+      background: linear-gradient(160deg, rgba(255, 255, 255, 0.04), rgba(255, 255, 255, 0.01));
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      border-radius: 18px;
+      padding: 1rem;
+      box-shadow: 0 18px 35px rgba(0, 0, 0, 0.45);
+      overflow: hidden;
+      position: relative;
+    }
+
+    .top-section {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      gap: clamp(0.5rem, 2vw, 2rem);
+      margin: 0.25rem 0 1rem;
+      flex-wrap: wrap;
+    }
+
+    .bomb {
+      width: 130px;
+      height: 130px;
+      border-radius: 50%;
+      background: radial-gradient(circle at 32% 28%, #333a6f 0%, #1f254e 50%, #0f132f 100%);
+      border: 3px solid rgba(255, 255, 255, 0.15);
+      display: grid;
+      place-items: center;
+      font-size: 2rem;
+      font-weight: 800;
+      letter-spacing: 1px;
+      text-shadow: 0 0 10px rgba(0, 0, 0, 0.45);
+      position: relative;
+    }
+
+    .bomb::before {
+      content: "";
+      width: 34px;
+      height: 24px;
+      border-radius: 8px;
+      position: absolute;
+      top: -18px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: linear-gradient(180deg, #8b8fa8, #494d6d);
+      border: 2px solid rgba(255, 255, 255, 0.25);
+    }
+
+    .bomb.urgent {
+      animation: pulse 0.8s ease-in-out infinite;
+      box-shadow: 0 0 0 0 rgba(255, 39, 71, 0.55);
+    }
+
+    @keyframes pulse {
+      0% {
+        transform: scale(1);
+      }
+      50% {
+        transform: scale(1.04);
+      }
+      100% {
+        transform: scale(1);
+      }
+    }
+
+    .defuse-track {
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
+      min-width: min(560px, 95vw);
+      padding: 0.2rem 0.25rem;
+    }
+
+    .track-row {
+      position: relative;
+      height: 72px;
+      border-radius: 12px;
+      background: rgba(255, 255, 255, 0.04);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      overflow: hidden;
+    }
+
+    .wire {
+      position: absolute;
+      left: 74px;
+      right: 90px;
+      top: 50%;
+      height: 6px;
+      transform: translateY(-50%);
+      background: linear-gradient(90deg, #4de3ff 0%, #9cf0ff 50%, #4de3ff 100%);
+      border-radius: 999px;
+      box-shadow: 0 0 10px rgba(92, 211, 255, 0.45);
+    }
+
+    .step-lines {
+      position: absolute;
+      left: 74px;
+      right: 90px;
+      top: 50%;
+      transform: translateY(-50%);
+      display: grid;
+      grid-template-columns: repeat(5, 1fr);
+      gap: 0;
+      pointer-events: none;
+    }
+
+    .step-lines span {
+      justify-self: center;
+      width: 3px;
+      height: 18px;
+      border-radius: 4px;
+      background: rgba(255, 255, 255, 0.35);
+    }
+
+    .scissors,
+    .cable-end {
+      position: absolute;
+      top: 50%;
+      transform: translateY(-50%);
+      font-size: 2rem;
+      z-index: 2;
+    }
+
+    .cable-end {
+      right: 20px;
+      filter: drop-shadow(0 0 8px rgba(110, 255, 180, 0.4));
+    }
+
+    .scissors {
+      left: 18px;
+      transition: left 320ms ease;
+      filter: drop-shadow(0 0 8px rgba(255, 255, 255, 0.25));
+    }
+
+    .progress-label {
+      font-size: 0.95rem;
+      color: var(--muted);
+      text-align: center;
+    }
+
+    .center {
+      margin: 0.8rem 0;
+      padding: 1.2rem;
+      border-radius: 14px;
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      min-height: 180px;
+      display: grid;
+      place-items: center;
+      background: rgba(6, 9, 22, 0.4);
+      text-align: center;
+      transition: opacity 250ms ease, transform 250ms ease;
+    }
+
+    .center.fade {
+      opacity: 0.2;
+      transform: translateY(10px);
+    }
+
+    .question {
+      font-size: clamp(1.1rem, 2.8vw, 1.8rem);
+      line-height: 1.35;
+      margin: 0;
+    }
+
+    .status {
+      font-size: 1.05rem;
+      color: var(--muted);
+      margin-top: 0.7rem;
+    }
+
+    .answers {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(120px, 1fr));
+      gap: 0.8rem;
+    }
+
+    .answers button,
+    .start-btn,
+    .restart-btn {
+      border: 0;
+      padding: 0.9rem 0.8rem;
+      border-radius: 12px;
+      color: var(--text);
+      background: linear-gradient(180deg, #354083, #26306a);
+      font-size: 1rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: transform 120ms ease, filter 120ms ease, box-shadow 180ms ease;
+      box-shadow: 0 6px 16px rgba(0, 0, 0, 0.3);
+    }
+
+    .answers button:hover,
+    .start-btn:hover,
+    .restart-btn:hover {
+      transform: translateY(-1px);
+      filter: brightness(1.08);
+    }
+
+    .answers button:active,
+    .start-btn:active,
+    .restart-btn:active {
+      transform: translateY(1px);
+    }
+
+    .answers button.correct {
+      background: linear-gradient(180deg, #2e7f53, #1c663f);
+    }
+
+    .answers button.wrong {
+      background: linear-gradient(180deg, #a33f4e, #7d2834);
+    }
+
+    .instruction,
+    .result {
+      display: grid;
+      gap: 1rem;
+      place-items: center;
+      text-align: center;
+      padding: 1.2rem;
+    }
+
+    .instruction p,
+    .result p {
+      margin: 0;
+      color: var(--muted);
+      max-width: 60ch;
+    }
+
+    .explosion {
+      font-size: clamp(3rem, 7vw, 6rem);
+      animation: boom 450ms ease-out 1;
+      filter: drop-shadow(0 0 14px rgba(255, 126, 89, 0.55));
+    }
+
+    @keyframes boom {
+      0% {
+        transform: scale(0.4) rotate(-10deg);
+        opacity: 0;
+      }
+      70% {
+        transform: scale(1.15) rotate(6deg);
+        opacity: 1;
+      }
+      100% {
+        transform: scale(1);
+      }
+    }
+
+    .hidden {
+      display: none !important;
+    }
+
+    @media (max-width: 720px) {
+      .answers {
+        grid-template-columns: 1fr;
+      }
+
+      .track-row {
+        height: 64px;
+      }
+
+      .wire,
+      .step-lines {
+        left: 60px;
+        right: 74px;
+      }
+
+      .scissors,
+      .cable-end {
+        font-size: 1.7rem;
+      }
+    }
+  </style>
+</head>
+<body>
+  <main class="app" aria-live="polite">
+    <section class="top-section">
+      <div class="bomb" id="bomb" aria-label="Bomb timer">
+        <span id="timeDisplay">60</span>
+      </div>
+
+      <div class="defuse-track">
+        <div class="track-row" id="trackRow">
+          <span class="scissors" id="scissors" aria-hidden="true">✂️</span>
+          <div class="wire" aria-hidden="true"></div>
+          <div class="step-lines" aria-hidden="true">
+            <span></span><span></span><span></span><span></span><span></span>
+          </div>
+          <span class="cable-end" aria-hidden="true">🔌</span>
+        </div>
+        <div class="progress-label" id="progressLabel">Defuse Progress: 0 / 5</div>
+      </div>
+    </section>
+
+    <section class="center" id="centerPanel">
+      <div class="instruction" id="instructionScreen">
+        <h1>3D Printing Quiz Defuse</h1>
+        <p>You must defuse the bomb before it explodes by answering the questions correctly.</p>
+        <button class="start-btn" id="startBtn">Start</button>
+      </div>
+
+      <div class="hidden" id="gameScreen">
+        <p class="question" id="questionText">Question will appear here.</p>
+        <p class="status" id="statusText">Choose the correct answer.</p>
+      </div>
+
+      <div class="result hidden" id="resultScreen">
+        <div id="resultVisual"></div>
+        <h2 id="resultTitle"></h2>
+        <p id="resultMessage"></p>
+        <button class="restart-btn" id="restartBtn">Play Again</button>
+      </div>
+    </section>
+
+    <section class="answers hidden" id="answersContainer"></section>
+  </main>
+
+  <script>
+    // Sample quiz data (simple placeholder questions).
+    const QUESTIONS = [
+      {
+        q: "What does PLA stand for in 3D printing?",
+        options: ["Polylactic Acid", "Plastic Layer Additive", "Poly Light Alloy", "Print Layer Agent"],
+        answer: 0
+      },
+      {
+        q: "Which printer part melts and extrudes filament?",
+        options: ["Build plate", "Hotend", "Stepper motor", "Frame"],
+        answer: 1
+      },
+      {
+        q: "What is the typical purpose of infill in a print?",
+        options: ["Coloring the model", "Adding internal structure", "Cooling the nozzle", "Leveling the bed"],
+        answer: 1
+      },
+      {
+        q: "What layer height usually gives finer detail?",
+        options: ["0.3 mm", "0.25 mm", "0.2 mm", "0.1 mm"],
+        answer: 3
+      },
+      {
+        q: "Why is bed leveling important?",
+        options: ["To make filament shiny", "To improve first-layer adhesion", "To reduce fan noise", "To increase nozzle size"],
+        answer: 1
+      },
+      {
+        q: "What does a slicer do?",
+        options: ["Cuts filament physically", "Converts 3D models to printer instructions", "Measures bed temperature", "Auto-repairs hardware"],
+        answer: 1
+      },
+      {
+        q: "Which material generally handles higher temperatures than PLA?",
+        options: ["PETG", "Paper", "Wax", "Foam"],
+        answer: 0
+      }
+    ];
+
+    const GAME_TIME = 60;
+    const MAX_STEPS = 5;
+
+    const state = {
+      timer: GAME_TIME,
+      score: 0,
+      current: 0,
+      activeQuestions: [],
+      running: false,
+      tickHandle: null
+    };
+
+    const bomb = document.getElementById("bomb");
+    const timeDisplay = document.getElementById("timeDisplay");
+    const scissors = document.getElementById("scissors");
+    const progressLabel = document.getElementById("progressLabel");
+    const centerPanel = document.getElementById("centerPanel");
+    const answersContainer = document.getElementById("answersContainer");
+    const instructionScreen = document.getElementById("instructionScreen");
+    const gameScreen = document.getElementById("gameScreen");
+    const resultScreen = document.getElementById("resultScreen");
+    const questionText = document.getElementById("questionText");
+    const statusText = document.getElementById("statusText");
+    const resultVisual = document.getElementById("resultVisual");
+    const resultTitle = document.getElementById("resultTitle");
+    const resultMessage = document.getElementById("resultMessage");
+
+    document.getElementById("startBtn").addEventListener("click", startGame);
+    document.getElementById("restartBtn").addEventListener("click", startGame);
+
+    // Update timer visuals and low-time urgency effect.
+    function renderTimer() {
+      timeDisplay.textContent = state.timer;
+      if (state.timer <= 10) {
+        bomb.classList.add("urgent");
+        bomb.style.color = "var(--danger)";
+      } else {
+        bomb.classList.remove("urgent");
+        bomb.style.color = "var(--text)";
+      }
+    }
+
+    // Move scissors along 5 visual steps. Wrong answers move back one step.
+    function renderProgress() {
+      progressLabel.textContent = `Defuse Progress: ${state.score} / ${MAX_STEPS}`;
+      const startX = 18;
+      const endX = 74;
+      const stepPx = (endX - startX) / MAX_STEPS;
+      scissors.style.left = `${startX + state.score * stepPx}%`;
+    }
+
+    function shuffle(array) {
+      const copy = [...array];
+      for (let i = copy.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [copy[i], copy[j]] = [copy[j], copy[i]];
+      }
+      return copy;
+    }
+
+    function startGame() {
+      clearInterval(state.tickHandle);
+
+      state.timer = GAME_TIME;
+      state.score = 0;
+      state.current = 0;
+      state.running = true;
+      state.activeQuestions = shuffle(QUESTIONS).slice(0, 10);
+
+      instructionScreen.classList.add("hidden");
+      resultScreen.classList.add("hidden");
+      gameScreen.classList.remove("hidden");
+      answersContainer.classList.remove("hidden");
+      statusText.textContent = "Choose the correct answer.";
+
+      renderTimer();
+      renderProgress();
+      renderQuestion();
+
+      state.tickHandle = setInterval(() => {
+        state.timer--;
+        renderTimer();
+
+        if (state.timer <= 0) {
+          loseGame();
+        }
+      }, 1000);
+    }
+
+    // Smoothly transition to the next question.
+    function renderQuestion() {
+      const item = state.activeQuestions[state.current % state.activeQuestions.length];
+      centerPanel.classList.add("fade");
+
+      setTimeout(() => {
+        questionText.textContent = item.q;
+        answersContainer.innerHTML = "";
+
+        item.options.forEach((option, idx) => {
+          const btn = document.createElement("button");
+          btn.textContent = option;
+          btn.addEventListener("click", () => handleAnswer(idx, item.answer, btn));
+          answersContainer.appendChild(btn);
+        });
+
+        centerPanel.classList.remove("fade");
+      }, 120);
+    }
+
+    // Beep generator for quick SFX (no external files needed).
+    function playTone(freq, duration, type = "sine", volume = 0.03) {
+      const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+      const osc = audioCtx.createOscillator();
+      const gain = audioCtx.createGain();
+
+      osc.type = type;
+      osc.frequency.value = freq;
+      gain.gain.value = volume;
+
+      osc.connect(gain);
+      gain.connect(audioCtx.destination);
+      osc.start();
+      osc.stop(audioCtx.currentTime + duration / 1000);
+
+      osc.onended = () => audioCtx.close();
+    }
+
+    function handleAnswer(selected, correct, buttonEl) {
+      if (!state.running) return;
+
+      const buttons = [...answersContainer.querySelectorAll("button")];
+      buttons.forEach((btn) => (btn.disabled = true));
+
+      if (selected === correct) {
+        state.score = Math.min(MAX_STEPS, state.score + 1);
+        buttonEl.classList.add("correct");
+        statusText.textContent = "Correct! The scissors moved closer to the cable.";
+        playTone(620, 120, "triangle");
+      } else {
+        state.score = Math.max(0, state.score - 1);
+        buttonEl.classList.add("wrong");
+        if (buttons[correct]) buttons[correct].classList.add("correct");
+        statusText.textContent = "Incorrect! The scissors moved away by one step.";
+        playTone(220, 160, "sawtooth");
+      }
+
+      renderProgress();
+
+      if (state.score >= MAX_STEPS) {
+        winGame();
+        return;
+      }
+
+      state.current++;
+      setTimeout(renderQuestion, 700);
+    }
+
+    function showResult(title, message, visual, isWin) {
+      gameScreen.classList.add("hidden");
+      answersContainer.classList.add("hidden");
+      resultScreen.classList.remove("hidden");
+
+      resultTitle.textContent = title;
+      resultMessage.textContent = message;
+      resultVisual.innerHTML = visual;
+      resultTitle.style.color = isWin ? "var(--success)" : "var(--danger)";
+    }
+
+    function winGame() {
+      if (!state.running) return;
+      state.running = false;
+      clearInterval(state.tickHandle);
+      playTone(860, 150, "triangle");
+      setTimeout(() => playTone(1040, 180, "triangle"), 110);
+
+      showResult(
+        "Bomb Defused!",
+        "Congratulations! You have defused the bomb. Keep learning 3D printing!",
+        '<div style="font-size:4rem">🧯✅</div>',
+        true
+      );
+    }
+
+    // Explosion sequence when timer reaches zero.
+    function loseGame() {
+      if (!state.running) return;
+      state.running = false;
+      clearInterval(state.tickHandle);
+      state.timer = 0;
+      renderTimer();
+
+      // Simple explosion sound effect (descending low tones).
+      playTone(160, 180, "square", 0.06);
+      setTimeout(() => playTone(120, 220, "square", 0.06), 130);
+      setTimeout(() => playTone(90, 260, "square", 0.05), 300);
+
+      showResult(
+        "BOOM!",
+        "The bomb has exploded! Try again!",
+        '<div class="explosion" role="img" aria-label="Explosion animation">💥</div>',
+        false
+      );
+    }
+
+    // Initial render for instruction mode.
+    renderTimer();
+    renderProgress();
+  </script>
+</body>
+</html>
